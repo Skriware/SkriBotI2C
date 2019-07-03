@@ -2,18 +2,16 @@
  
   Skribot_2::Skribot_2(){
     //Wire.begin();
-    #ifdef DEBUG_MODE
-      Serial.begin(9600);
-    #endif
+    
   }
 
   void Skribot_2::setup(){
     BLE_Setup();
     //i2c_0 = new TwoWire(0);
     hspi = new SPIClass(HSPI);
-    Wire.begin(21,22,100000);
+    Wire.begin();
     hspi->begin();
-    IdentifyModules_I2C();
+   
    
     pinMode(CPLD_CS, OUTPUT);
     pinMode(CPLD_MOSI,OUTPUT);
@@ -21,6 +19,9 @@
     pinMode(CPLD_SCK,OUTPUT);
     digitalWrite(CPLD_SCK,LOW);
     digitalWrite(CPLD_CS,HIGH);
+    #ifdef DEBUG_MODE
+      Serial.begin(230400);
+    #endif
   }
 
 byte Skribot_2::CPLD_read(byte addr){
@@ -126,7 +127,8 @@ byte Skribot_2::Update_Module_Signals(){
 
 }
 void Skribot_2::IdentifyModules_SPI(){
-if(Update_Module_Signals() == MODULE_CHANGED_CODE){
+Update_Module_Signals();
+//if(Update_Module_Signals() == MODULE_CHANGED_CODE){
   for(byte ii = 0; ii < connected_modules;ii++)delete modules[ii];
     connected_modules = 0;
   byte get_type_mess[] = {B00010000,1};
@@ -150,13 +152,13 @@ if(Update_Module_Signals() == MODULE_CHANGED_CODE){
          #ifdef DEBUG_MODE
          Serial.println("Find module!");
          Serial.print("Type:");
-         Serial.println(tmp_type);
+         Serial.println(tmp_type,HEX);
          Serial.println("address:");
          Serial.println(tmp_addr);
          #endif
       }
   }
-  }
+  //}
 }
 
 byte Skribot_2::TransferAndReciveByte_SPI(byte in,byte addr){
@@ -179,9 +181,18 @@ byte Skribot_2::SPITransfere(byte addr, byte *msg){
   for(byte yy = 1; yy < Nsend+1;yy++){
   TransferAndReciveByte_SPI(msg[yy+1],addr);
   }
+  byte checksum = 0;
+  for(byte jj = 0; jj < Nsend+2;jj++)checksum = checksum^msg[jj];
+  checksum+=4;
+  TransferAndReciveByte_SPI(checksum,addr);              //sending checksum
   for(byte zz = 0; zz<Nrec;zz++){
     output[zz] = TransferAndReciveByte_SPI(0,addr);             //receiving data 
   }
+  byte tmp_checksum = TransferAndReciveByte_SPI(0,addr);  
+  byte rcv_checksum = 0;
+  for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
+    rcv_checksum+=4;
+  if(tmp_checksum != rcv_checksum)Serial.println("SPI checksum error!");
   for(byte pp = 0; pp < Nrec; pp++)output_buffer[pp] = output[pp];
   return(Nrec);
 }
@@ -287,40 +298,57 @@ void Skribot_2::BLE_Setup(){
               for(byte yy = 1; yy < Nsend+1;yy++){
                 I2CSend(msg[yy+1],addr);
               }
+              byte checksum = 0;
+              for(byte jj = 0; jj < Nsend+2;jj++)checksum = checksum^msg[jj];
+              checksum+=4;
+              I2CSend(checksum,addr);              //sending checksum
               for(byte zz = 0; zz<Nrec;zz++){
                 output[zz] = I2CRecive(addr,1);             //receiving data 
+                Serial.print(zz);
+                Serial.print(":");
+                Serial.println(output[zz]);
               }
+               byte tmp_checksum = I2CRecive(addr,1); 
+               Serial.println(tmp_checksum); 
+               byte rcv_checksum = 0;
+              for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
+              rcv_checksum+=4;
+              if(tmp_checksum != rcv_checksum)Serial.println("I2C checksum error!");
               for(byte pp = 0; pp < Nrec; pp++)output_buffer[pp] = output[pp];
               return(Nrec);
     }
 
     void Skribot_2::IdentifyModules_I2C(){
+     for(byte ii = 0; ii < connected_modules;ii++)delete modules[ii];
+     connected_modules = 0;
      byte error;
-     for(byte tmpaddress  = 1; tmpaddress < 128; tmpaddress++){  //I2C scan
+     for(byte tmpaddress  = 0; tmpaddress < 127; tmpaddress++){  //I2C scan
         Wire.beginTransmission(tmpaddress);
-        Wire.write(0xFF);
-        error = Wire.endTransmission(true);
+        Wire.write(0xff);
+        error = Wire.endTransmission();
       if (error == 0){
         Serial.print("I2C device found at address 0x");
         if (tmpaddress<16)
         Serial.print("0");
         Serial.print(tmpaddress,HEX);
         Serial.println("  !");
+        
         byte get_type_mess[] = {B00010000,1};
         I2CTransfere(tmpaddress,get_type_mess);
         byte tmp_type = output_buffer[0];
         byte tmp_id = 0;
         Serial.print("Module Type: ");
-        Serial.println(tmp_type);
+        Serial.println(tmp_type,HEX);
         for(byte tt = 0; tt <connected_modules;tt++){
           if(tmp_type == modules[tt]->GetType())tmp_id++;
         }
-        byte set_id_mess[] = {1,2,tmp_id};
-        I2CTransfere(tmpaddress,set_id_mess);
+        
+        /*byte set_id_mess[] = {1,2,tmp_id};
+        //I2CTransfere(tmpaddress,set_id_mess);
         if (connected_modules < 8){
           modules[connected_modules] = new Module(tmpaddress,tmp_id,tmp_type,CONNECTION_TYPE_I2C);
           connected_modules++;
-        }
+        }*/
       }else if (error==4){
             Serial.print("Unknown error at address 0x");
             if (tmpaddress<16)

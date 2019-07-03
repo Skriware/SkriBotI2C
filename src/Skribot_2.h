@@ -25,7 +25,6 @@
 #define MODULE_OK_CODE 0
 #define MODULE_CHANGED_CODE 1
 #define MODULE_ERROR_CODE  2
-
 /* COMMON ADDRESSES:
 1 - Identify module Type;
 2 - Set Identifier;
