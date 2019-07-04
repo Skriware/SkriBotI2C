@@ -302,15 +302,18 @@ void Skribot_2::BLE_Setup(){
               for(byte jj = 0; jj < Nsend+2;jj++)checksum = checksum^msg[jj];
               checksum+=4;
               I2CSend(checksum,addr);              //sending checksum
-              for(byte zz = 0; zz<Nrec;zz++){
-                output[zz] = I2CRecive(addr,1);             //receiving data 
-                Serial.print(zz);
-                Serial.print(":");
-                Serial.println(output[zz]);
+              Wire.requestFrom(addr,Nrec+1);
+              for(byte tt = 0; tt < Nrec;tt++){
+                if(Wire.available())output[tt] = Wire.read();
               }
-               byte tmp_checksum = I2CRecive(addr,1); 
-               Serial.println(tmp_checksum); 
+              byte tmp_checksum;
+              if(Wire.available()){
+                tmp_checksum = Wire.read();
+              }else{
+                tmp_checksum = 0;
+              }
                byte rcv_checksum = 0;
+              
               for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
               rcv_checksum+=4;
               if(tmp_checksum != rcv_checksum)Serial.println("I2C checksum error!");
