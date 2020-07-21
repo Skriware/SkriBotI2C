@@ -9,10 +9,8 @@
     BLE_Setup();
     //i2c_0 = new TwoWire(0);
     hspi = new SPIClass(HSPI);
+    hspi->begin(14,12,13);
     Wire.begin();
-    hspi->begin();
-   
-   
     pinMode(CPLD_CS, OUTPUT);
     pinMode(CPLD_MOSI,OUTPUT);
     pinMode(CPLD_MISO,INPUT);
@@ -96,6 +94,9 @@ byte Skribot_2::Update_Module_Signals(){
   _MODPRES = CPLD_read(CPLD_MODPRES); 
   _POWGD   = CPLD_read(CPLD_POWGD);
   _MODGD   = CPLD_read(CPLD_MODGD);
+  Serial.println(_MODPRES,BIN);
+  Serial.println(_POWGD,BIN);
+  Serial.println(_MODGD,BIN);
   if(_MODPRES == MODPRES && _POWGD == POWGD && _MODGD == MODGD){
   if(_MODGD == POWGD && POWGD== MODPRES){
     #ifdef DEBUG_MODE
@@ -112,7 +113,7 @@ byte Skribot_2::Update_Module_Signals(){
   MODGD = _MODGD;
   POWGD = _POWGD;
   MODPRES = _MODPRES;
-  if(MODGD == POWGD && POWGD== MODPRES){
+if(MODGD == POWGD && POWGD== MODPRES){
    #ifdef DEBUG_MODE
     Serial.println("All modules working, module changes detected");
    #endif
@@ -127,15 +128,14 @@ byte Skribot_2::Update_Module_Signals(){
 
 }
 void Skribot_2::IdentifyModules_SPI(){
-Update_Module_Signals();
-//if(Update_Module_Signals() == MODULE_CHANGED_CODE){
+if(Update_Module_Signals() != MODULE_ERROR_CODE){
   for(byte ii = 0; ii < connected_modules;ii++)delete modules[ii];
     connected_modules = 0;
   byte get_type_mess[] = {B00010000,1};
   for(byte ii = 0; ii < 8 ;ii++){
       byte tmp_id = 0;
       byte tmp_addr = ii+1;
-      if(bit_Read(MODGD,ii)){
+      if(bit_Read(MODPRES,ii)){
          SPITransfere(tmp_addr,get_type_mess);           
          byte tmp_type = output_buffer[0];
          for(byte tt = 0; tt <connected_modules;tt++){
@@ -152,13 +152,13 @@ Update_Module_Signals();
          #ifdef DEBUG_MODE
          Serial.println("Find module!");
          Serial.print("Type:");
-         Serial.println(tmp_type,HEX);
+         Serial.println(tmp_type);
          Serial.println("address:");
          Serial.println(tmp_addr);
          #endif
       }
   }
-  //}
+  }
 }
 
 byte Skribot_2::TransferAndReciveByte_SPI(byte in,byte addr){
@@ -187,8 +187,12 @@ byte Skribot_2::SPITransfere(byte addr, byte *msg){
   TransferAndReciveByte_SPI(checksum,addr);              //sending checksum
   for(byte zz = 0; zz<Nrec;zz++){
     output[zz] = TransferAndReciveByte_SPI(0,addr);             //receiving data 
+    Serial.println("Got:");
+    Serial.println(output[zz]);
   }
-  byte tmp_checksum = TransferAndReciveByte_SPI(0,addr);  
+  byte tmp_checksum = TransferAndReciveByte_SPI(0,addr); 
+    Serial.println("Checksum:");
+    Serial.println(tmp_checksum); 
   byte rcv_checksum = 0;
   for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
     rcv_checksum+=4;
@@ -341,7 +345,7 @@ void Skribot_2::BLE_Setup(){
         byte tmp_type = output_buffer[0];
         byte tmp_id = 0;
         Serial.print("Module Type: ");
-        Serial.println(tmp_type,HEX);
+        Serial.println(tmp_type);
         for(byte tt = 0; tt <connected_modules;tt++){
           if(tmp_type == modules[tt]->GetType())tmp_id++;
         }
@@ -371,6 +375,6 @@ byte Skribot_2::cti(char x){
 }
 
 bool Skribot_2::bit_Read(byte in, byte n){
-   return(in & (1<<n));
+   return(!(in & (1<<n)));
 }
 

@@ -6,6 +6,7 @@
 #ifdef ESP_H
 
 bool BLEModule::deviceConnected = false;
+bool BLEModule::recivingData = false;
 char BLEModule::RXBLE_buffer[BLERXBUFFER_SIZE];
 byte BLEModule::RXBLE_buffer_iterator_end = 1;
 byte BLEModule::RXBLE_buffer_iterator_beg = 0;
@@ -74,7 +75,7 @@ void BLEModule::BLE_write(char *msg){
   }
 
 bool BLEModule::BLE_checkConnection(){
-			 bool connection;  
+			bool connection;  
 	switch(_type){
 		case HM_10:
 			 connection = digitalRead(EDU_BT_STATE_PIN) == HIGH;

@@ -8,12 +8,12 @@
 #include <SPI.h>
 
 //CPLD communication port:
-#define CPLD_MOSI 27
-#define CPLD_SCK  26
-#define CPLD_MISO 25
-#define CPLD_CS 15
+#define CPLD_MOSI 18
+#define CPLD_SCK  5
+#define CPLD_MISO 19
+#define CPLD_CS 17
 
-#define CPLD_PERIOD 10 
+#define CPLD_PERIOD 100 
 //CPLD ADDRESSES:
 #define CPLD_POWGD 1 
 #define CPLD_MODGD 2 
