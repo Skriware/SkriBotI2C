@@ -4,6 +4,7 @@ Skribot_2 *robot = new Skribot_2();
 void setup() {
  
   robot->setup();
+  Serial.println("Hello");
 
 }
 
@@ -17,12 +18,12 @@ void loop() {
     robot->IdentifyModules_I2C();
 
     }else if(input == 'T'){
-    robot->Set_module_CS(1);
-    delay(500);
-    robot->Set_module_CS(0);
-    }else{
-    Serial.println(robot->TransferAndReciveByte_SPI(robot->cti(input),1));
+
     }
   }
 
+}
+
+void run_Test_Program(){
+    
 }

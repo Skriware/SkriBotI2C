@@ -13,7 +13,7 @@
 #define CPLD_MISO 19
 #define CPLD_CS 17
 
-#define CPLD_PERIOD 100 
+#define CPLD_PERIOD 10
 //CPLD ADDRESSES:
 #define CPLD_POWGD 1 
 #define CPLD_MODGD 2 
@@ -69,14 +69,14 @@ static const int spiClk = 100000; // 1 MHz
     byte cti(char x);
     bool bit_Read(byte in, byte n);
     void wait_And_Check_BLE_Connection(int ms,int interval);
-   
-    //int BaterryCheck();       TODO
-
-
+    bool searchForModule(int id,int type);
+    Module* getModule(byte type, byte id = 0);
     byte Header_byte(byte nSend,byte nRec);
+    byte* Transfere(Module *target,byte *msg); 
     void Test_SPI_Comm();
     void Test_I2C_Comm();
    
+
     
    
 

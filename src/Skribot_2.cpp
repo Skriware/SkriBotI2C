@@ -6,7 +6,7 @@
   }
 
   void Skribot_2::setup(){
-    BLE_Setup();
+   // BLE_Setup();
     //i2c_0 = new TwoWire(0);
     hspi = new SPIClass(HSPI);
     hspi->begin(14,12,13);
@@ -43,6 +43,8 @@ byte Skribot_2::CPLD_read(byte addr){
     digitalWrite (CPLD_SCK, LOW);
     delayMicroseconds(CPLD_PERIOD);   
   }
+  digitalWrite(CPLD_CS, HIGH);
+  delayMicroseconds(CPLD_PERIOD);
   return(out);
 }
 
@@ -67,6 +69,7 @@ void Skribot_2::CPLD_write(byte value,byte addr){
     delayMicroseconds(CPLD_PERIOD/2);
   }
     digitalWrite(CPLD_CS, HIGH);
+    delayMicroseconds(CPLD_PERIOD);
 }
 
 byte Skribot_2::Header_byte(byte nSend,byte nRec){
@@ -74,7 +77,7 @@ byte Skribot_2::Header_byte(byte nSend,byte nRec){
 }
 
 void Skribot_2::Test_SPI_Comm(){
-  byte mess[] = {Header_byte(3,3),3,1,2,3};
+  byte mess[] = {Header_byte(3,3),5,1,2,3};
   SPITransfere(1,mess);
   Serial.println(output_buffer[0]);
   Serial.println(output_buffer[1]);
@@ -82,8 +85,8 @@ void Skribot_2::Test_SPI_Comm(){
 }
 
 void Skribot_2::Test_I2C_Comm(){
-  byte mess[] = {Header_byte(3,3),3,1,2,3};
-  I2CTransfere(14,mess);
+  byte mess[] = {B00110011,5,1,2,3};
+  I2CTransfere(17,mess);
   Serial.println(output_buffer[0]);
   Serial.println(output_buffer[1]);
   Serial.println(output_buffer[2]);
@@ -162,11 +165,14 @@ if(Update_Module_Signals() != MODULE_ERROR_CODE){
 }
 
 byte Skribot_2::TransferAndReciveByte_SPI(byte in,byte addr){
-   Set_module_CS(addr);
-   hspi->beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0));  
+  
+  hspi->beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0)); 
+  Set_module_CS(addr); 
    byte out = hspi->transfer(in);
    hspi->endTransaction();
-   Set_module_CS(0);
+  Set_module_CS(0);
+  Serial.print("Sending");
+  Serial.println(in);
    return(out);
 }
 
@@ -187,7 +193,7 @@ byte Skribot_2::SPITransfere(byte addr, byte *msg){
   TransferAndReciveByte_SPI(checksum,addr);              //sending checksum
   for(byte zz = 0; zz<Nrec;zz++){
     output[zz] = TransferAndReciveByte_SPI(0,addr);             //receiving data 
-    Serial.println("Got:");
+    Serial.print("Got:");
     Serial.println(output[zz]);
   }
   byte tmp_checksum = TransferAndReciveByte_SPI(0,addr); 
@@ -349,13 +355,12 @@ void Skribot_2::BLE_Setup(){
         for(byte tt = 0; tt <connected_modules;tt++){
           if(tmp_type == modules[tt]->GetType())tmp_id++;
         }
-        
-        /*byte set_id_mess[] = {1,2,tmp_id};
-        //I2CTransfere(tmpaddress,set_id_mess);
+        byte set_id_mess[] = {1,2,tmp_id};
+        I2CTransfere(tmpaddress,set_id_mess);
         if (connected_modules < 8){
           modules[connected_modules] = new Module(tmpaddress,tmp_id,tmp_type,CONNECTION_TYPE_I2C);
           connected_modules++;
-        }*/
+        }
       }else if (error==4){
             Serial.print("Unknown error at address 0x");
             if (tmpaddress<16)
@@ -378,3 +383,26 @@ bool Skribot_2::bit_Read(byte in, byte n){
    return(!(in & (1<<n)));
 }
 
+bool Skribot_2::searchForModule(int id,int type){
+  for(byte rr = 0; rr<connected_modules;rr++){
+    if(modules[rr]->GetID() == id && modules[rr]->GetType() == type)return(true);
+  }
+  return(false);
+}
+
+Module* Skribot_2::getModule(byte type, byte id ){
+  for(byte rr = 0; rr<connected_modules;rr++){
+    if(modules[rr]->GetType() == type && (id == 0 ||modules[rr]->GetID() == id))return(modules[rr]);
+  }
+}
+
+byte* Skribot_2::Transfere(Module *target,byte *msg){
+      if(target->GetConnectionType() == CONNECTION_TYPE_SPI){
+        SPITransfere(target->GetAddress(),msg);
+      }else if(target->GetConnectionType() == CONNECTION_TYPE_I2C){
+        I2CTransfere(target->GetAddress(),msg);
+      }else{
+        return(NULL);
+      }
+    return(output_buffer);
+}
