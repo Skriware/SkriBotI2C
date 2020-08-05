@@ -97,9 +97,6 @@ byte Skribot_2::Update_Module_Signals(){
   _MODPRES = CPLD_read(CPLD_MODPRES); 
   _POWGD   = CPLD_read(CPLD_POWGD);
   _MODGD   = CPLD_read(CPLD_MODGD);
-  Serial.println(_MODPRES,BIN);
-  Serial.println(_POWGD,BIN);
-  Serial.println(_MODGD,BIN);
   if(_MODPRES == MODPRES && _POWGD == POWGD && _MODGD == MODGD){
   if(_MODGD == POWGD && POWGD== MODPRES){
     #ifdef DEBUG_MODE
@@ -171,8 +168,6 @@ byte Skribot_2::TransferAndReciveByte_SPI(byte in,byte addr){
    byte out = hspi->transfer(in);
    hspi->endTransaction();
   Set_module_CS(0);
-  Serial.print("Sending");
-  Serial.println(in);
    return(out);
 }
 
@@ -193,12 +188,8 @@ byte Skribot_2::SPITransfere(byte addr, byte *msg){
   TransferAndReciveByte_SPI(checksum,addr);              //sending checksum
   for(byte zz = 0; zz<Nrec;zz++){
     output[zz] = TransferAndReciveByte_SPI(0,addr);             //receiving data 
-    Serial.print("Got:");
-    Serial.println(output[zz]);
   }
   byte tmp_checksum = TransferAndReciveByte_SPI(0,addr); 
-    Serial.println("Checksum:");
-    Serial.println(tmp_checksum); 
   byte rcv_checksum = 0;
   for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
     rcv_checksum+=4;
@@ -305,24 +296,28 @@ void Skribot_2::BLE_Setup(){
               byte output[Nrec];
               I2CSend(msg[0],addr);           //transmit header
               I2CSend(msg[1],addr);           //transfering command address
-              for(byte yy = 1; yy < Nsend+1;yy++){
-                I2CSend(msg[yy+1],addr);
+              if(Nsend != 0){
+              Wire.beginTransmission(addr);
+              for(byte yy = 2; yy < Nsend+2;yy++){
+                Wire.write(msg[yy]);
+              }
+              Wire.endTransmission();
               }
               byte checksum = 0;
               for(byte jj = 0; jj < Nsend+2;jj++)checksum = checksum^msg[jj];
               checksum+=4;
               I2CSend(checksum,addr);              //sending checksum
               Wire.requestFrom(addr,Nrec+1);
-              for(byte tt = 0; tt < Nrec;tt++){
-                if(Wire.available())output[tt] = Wire.read();
-              }
-              byte tmp_checksum;
-              if(Wire.available()){
-                tmp_checksum = Wire.read();
-              }else{
-                tmp_checksum = 0;
-              }
-               byte rcv_checksum = 0;
+              byte tt = 0;
+                    while(Wire.available()){
+                      output[tt] = Wire.read();
+                      tt++;
+                       if(tt == Nrec+1)break;
+                    }
+                            
+                            
+              byte tmp_checksum = output[Nrec];
+              byte rcv_checksum = 0;
               
               for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
               rcv_checksum+=4;
@@ -383,17 +378,18 @@ bool Skribot_2::bit_Read(byte in, byte n){
    return(!(in & (1<<n)));
 }
 
-bool Skribot_2::searchForModule(int id,int type){
+bool Skribot_2::searchForModule(int type,int id){
   for(byte rr = 0; rr<connected_modules;rr++){
-    if(modules[rr]->GetID() == id && modules[rr]->GetType() == type)return(true);
+    if((id == 0 || modules[rr]->GetID() == id) && modules[rr]->GetType() == type)return(true);
   }
   return(false);
 }
 
-Module* Skribot_2::getModule(byte type, byte id ){
+Module* Skribot_2::getModule(byte type, byte id){
   for(byte rr = 0; rr<connected_modules;rr++){
     if(modules[rr]->GetType() == type && (id == 0 ||modules[rr]->GetID() == id))return(modules[rr]);
   }
+  return(NULL);
 }
 
 byte* Skribot_2::Transfere(Module *target,byte *msg){

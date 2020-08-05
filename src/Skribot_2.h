@@ -69,7 +69,7 @@ static const int spiClk = 100000; // 1 MHz
     byte cti(char x);
     bool bit_Read(byte in, byte n);
     void wait_And_Check_BLE_Connection(int ms,int interval);
-    bool searchForModule(int id,int type);
+    bool searchForModule(int type,int id=0);
     Module* getModule(byte type, byte id = 0);
     byte Header_byte(byte nSend,byte nRec);
     byte* Transfere(Module *target,byte *msg); 
@@ -80,7 +80,7 @@ static const int spiClk = 100000; // 1 MHz
     
    
 
-
+byte output_buffer[16];
   private:
   BLEModule *BTmodule;
   Module *modules[8];
@@ -92,7 +92,7 @@ static const int spiClk = 100000; // 1 MHz
   byte MODPRES;
   byte connected_modules = 0;
   bool using_BLE_Connection,connection_Break_Reported, program_End_Reported,stausLEDused,high_power_usage;
-  byte output_buffer[16];
+  
  };
 
  #endif
