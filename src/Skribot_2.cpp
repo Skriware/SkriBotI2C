@@ -389,6 +389,7 @@ Module* Skribot_2::getModule(byte type, byte id){
   for(byte rr = 0; rr<connected_modules;rr++){
     if(modules[rr]->GetType() == type && (id == 0 ||modules[rr]->GetID() == id))return(modules[rr]);
   }
+  Serial.println("No module found");
   return(NULL);
 }
 
@@ -401,4 +402,25 @@ byte* Skribot_2::Transfere(Module *target,byte *msg){
         return(NULL);
       }
     return(output_buffer);
+}
+
+bool Skribot_2::ChechModuleSetup(byte N, byte *module_list){
+    bool passed = true;
+    if(N == 1){
+      passed = searchForModule(*module_list);
+      if(!passed){
+        Serial.print("Missing module:");
+        Serial.println(*module_list);
+      }
+    }else{
+    for(byte rr = 0;rr<N;rr++){
+      if(!searchForModule(module_list[rr])){
+        Serial.print("Missing module:");
+        Serial.println(module_list[rr]);
+        passed = false;
+      }
+    }
+  }
+    if(passed)Serial.println("All required modules detected!");
+    return(passed);
 }

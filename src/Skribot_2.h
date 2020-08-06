@@ -73,6 +73,7 @@ static const int spiClk = 100000; // 1 MHz
     Module* getModule(byte type, byte id = 0);
     byte Header_byte(byte nSend,byte nRec);
     byte* Transfere(Module *target,byte *msg); 
+    bool ChechModuleSetup(byte N, byte *module_list);
     void Test_SPI_Comm();
     void Test_I2C_Comm();
    
