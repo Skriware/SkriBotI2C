@@ -1,4 +1,4 @@
-#include <Arduino.h>
+/*#include <Arduino.h>
 #ifndef _VARIANT_BBC_MICROBIT_
 #include "BLEModule.h"
 #include <EEPROM.h>
@@ -280,3 +280,4 @@ bool BLEModule::BLE_checkConnection(){
 
 
   #endif
+  */

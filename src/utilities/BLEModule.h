@@ -1,4 +1,4 @@
-#ifndef BLE_MOD_H
+/*#ifndef BLE_MOD_H
 #define BLE_MOD_H
 #include "Arduino.h"
 #define EDU_BT_STATE_PIN 3
@@ -82,3 +82,4 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 #endif
 
 #endif
+*/
