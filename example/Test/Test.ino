@@ -18,10 +18,58 @@ void loop() {
     robot->IdentifyModules_I2C();
 
     }else if(input == 'T'){
-        run_Test_Program();
+      run_Test_Program();
+    }else if(input == 'M'){
+      run_Milestone_Test();
+    }else if(input == 'G'){
+      gas_sensor_test();
     }
   }
 
+}
+
+void run_Milestone_Test(){
+  int succes_rate = 0;
+  byte matrix_reinit[] = {0x00,0xe0};
+  byte set_number_msg[] = {0x08,0x0b,0, 0, 0, 0, 0, 0, 0, 0};
+  byte module_Types[] = {23,28};
+  for(int hh = 0; hh < 3600*6;hh++){
+    robot->IdentifyModules_SPI();
+    if(robot->ChechModuleSetup(2,module_Types)){
+      Serial.println("Matrix detected!");
+      Module *matrix = robot->getModule(23);
+      robot->Transfere(matrix,matrix_reinit);
+      delay(50);
+      robot->Transfere(matrix,set_number_msg);
+      succes_rate++;
+      set_number_msg[3] = 100*succes_rate/3600/6;
+      delay(100);
+    }
+    Serial.println(succes_rate);
+    if(Serial.available()){
+            Serial.read();
+             //robot->Transfere(buzzer,mute);
+            break;
+          }
+  }
+}
+
+void gas_sensor_test(){
+  robot->IdentifyModules_SPI();
+  byte gas_sensor_id = 28;
+  if(robot->ChechModuleSetup(1,&gas_sensor_id)){
+    Serial.println("Gas sensor detected!");
+    Module *gas_sensor = robot->getModule(28);
+    byte gas_readout_msg[] = {0x20,0x0a};
+    for(int tt = 0; tt<1000;tt++){
+            robot->Transfere(gas_sensor,gas_readout_msg);
+            int gas = robot->output_buffer[0];
+            gas = gas << 8 | robot->output_buffer[1];  
+            Serial.println(gas);
+            delay(10);
+    }
+    
+  }
 }
 
 void run_Test_Program(){

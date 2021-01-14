@@ -17,8 +17,9 @@
     pinMode(CPLD_SCK,OUTPUT);
     digitalWrite(CPLD_SCK,LOW);
     digitalWrite(CPLD_CS,HIGH);
+     Serial.begin(230400);
     #ifdef DEBUG_MODE
-      Serial.begin(230400);
+     
     #endif
   }
 
