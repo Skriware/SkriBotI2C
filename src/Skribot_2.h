@@ -1,6 +1,6 @@
 #ifndef SkriBotI2C_H
 #define SkriBotI2C_H
-//#define DEBUG_MODE
+#define DEBUG_MODE
 #include "Arduino.h"
 #include <utilities/Module.h>
 #include <utilities/BLEModule.h>
@@ -28,7 +28,7 @@
 2 - Set Identifier;
 
 */
-static const int spiClk = 100000; // 1 MHz
+static const int spiClk = 2000000; // 1 MHz
 
   class Skribot_2
  {

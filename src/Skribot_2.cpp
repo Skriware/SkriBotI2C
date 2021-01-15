@@ -172,7 +172,7 @@ byte Skribot_2::TransferAndReciveByte_SPI(byte in,byte addr){
    return(out);
 }
 
-
+/*
 byte Skribot_2::SPITransfere(byte addr, byte *msg){
   for(byte p = 0; p < 15; p++)output_buffer[p] = 0;
   byte Nsend = msg[0] & B00001111;              //number of bytes to send
@@ -196,6 +196,41 @@ byte Skribot_2::SPITransfere(byte addr, byte *msg){
     rcv_checksum+=4;
   if(tmp_checksum != rcv_checksum)Serial.println("SPI checksum error!");
   for(byte pp = 0; pp < Nrec; pp++)output_buffer[pp] = output[pp];
+  return(Nrec);
+}
+*/
+byte Skribot_2::SPITransfere(byte addr, byte *msg){
+  for(byte p = 0; p < 15; p++)output_buffer[p] = 0;
+  byte Nsend = msg[0] & B00001111;              //number of bytes to send
+  byte Nrec  = (msg[0]>>4) & B00001111;         // nuber of bytes to recive
+  byte output[Nrec];
+  hspi->beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0));
+  Set_module_CS(addr); 
+  hspi->transfer(msg[0]);          //transmit header
+  hspi->transfer(msg[1]);          //transfering command address
+  for(byte yy = 1; yy < Nsend+1;yy++){
+  hspi->transfer(msg[yy+1]);
+  }
+  byte checksum = 0;
+  for(byte jj = 0; jj < Nsend+2;jj++)checksum = checksum^msg[jj];
+  checksum+=4;
+  hspi->transfer(checksum);              //sending checksum
+  for(byte zz = 0; zz<Nrec;zz++){
+    output[zz] = hspi->transfer(0);             //receiving data 
+  }
+  byte tmp_checksum = hspi->transfer(0); 
+  byte rcv_checksum = 0;
+  for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
+    rcv_checksum+=4;
+  if(tmp_checksum != rcv_checksum){
+    Serial.println("SPI checksum error!");
+    Serial.print(output_buffer[0]);
+    Serial.print(" ");
+    Serial.println(tmp_checksum);  
+  }
+  for(byte pp = 0; pp < Nrec; pp++)output_buffer[pp] = output[pp];
+  hspi->endTransaction();
+  Set_module_CS(0);
   return(Nrec);
 }
 
