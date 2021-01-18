@@ -25,6 +25,8 @@ void loop() {
       gas_sensor_test();
     }else if(input == '1'){
       run_Milestone_Test_1();
+    }else if(input == '2'){
+      run_Milestone_Test_2();
     }
   }
 
@@ -46,12 +48,15 @@ void run_Milestone_Test_1(){
   byte set_state_msg[] = {0x08,0x0b,0, 0, 255, 0, 255,0, 0, 0};
   byte gas_readout_msg[] = {0x20,0x0a};
   byte read_lux_msg[] = {0x20,0x0b};
-  byte get_color_msg[] = {0x40,0x0a};
+  byte get_red_msg[] = {0x41,0x0a,0};
+  byte get_blue_msg[] = {0x41,0x0a,1};
+  byte get_green_msg[] = {0x41,0x0a,3};
     if(robot->ChechModuleSetup(4,module_Types)){
         Module *gas_sensor = robot->getModule(28);
         Module *matrix = robot->getModule(23);
         Module *light_sensor = robot->getModule(0x15);
         Module *color_sensor = robot->getModule(0x1a);
+        robot->Transfere(matrix,matrix_reinit);
         while(true){
           robot->Transfere(light_sensor,read_lux_msg);    //light sesnor readout
           int lux = robot->output_buffer[0];
@@ -61,11 +66,12 @@ void run_Milestone_Test_1(){
           int gas = robot->output_buffer[0];
           gas = gas << 8 | robot->output_buffer[1];
 
-          robot->Transfere(color_sensor,get_color_msg);
-          byte red    = robot->output_buffer[0];
-          byte blue   = robot->output_buffer[1];
-          byte green  = robot->output_buffer[3];
-
+          robot->Transfere(color_sensor,get_red_msg);
+          int red = int(robot->output_buffer[2]<<8) | robot->output_buffer[3];
+          robot->Transfere(color_sensor,get_green_msg);
+          int green = int(robot->output_buffer[2]<<8) | robot->output_buffer[3];
+          robot->Transfere(color_sensor,get_blue_msg);
+          int blue = int(robot->output_buffer[2]<<8) | robot->output_buffer[3];
           Serial.print("lux:");
           Serial.print(lux);
           Serial.print("gas:");
@@ -77,19 +83,53 @@ void run_Milestone_Test_1(){
           Serial.print("red:");
           Serial.println(red);
           delay(100);
-          Serial.println(val_to_bar(lux,2000));
-          Serial.println(val_to_bar(gas,2000));
-          Serial.println(val_to_bar(blue,255));
-          set_state_msg[2] = val_to_bar(lux,500);
-          set_state_msg[3] = val_to_bar(lux,500);
+          //Serial.println(val_to_bar(blue,255));
+          set_state_msg[2] = val_to_bar(lux,1000);
+          set_state_msg[3] = val_to_bar(lux,1000);
           set_state_msg[5] = val_to_bar(gas,2000);
-          set_state_msg[7] = val_to_bar(blue,255);
-          set_state_msg[8] = val_to_bar(red,255);
-          set_state_msg[9] = val_to_bar(green,255);
-          //robot->Transfere(matrix,matrix_reinit);
+          set_state_msg[7] = val_to_bar(blue,40000);
+          set_state_msg[8] = val_to_bar(red,40000);
+          set_state_msg[9] = val_to_bar(green,40000);
           //delay(50);
           robot->Transfere(matrix,set_state_msg);
           delay(100);
+          if(Serial.available()){
+            Serial.read();
+            break;
+          }
+        }
+    }
+}
+
+void run_Milestone_Test_2(){
+  byte module_Types[] = {0x16,0x18,0x1b};
+  robot->IdentifyModules_SPI();
+  byte button_pressed_msg[] = {0x11,0x0d,0};
+  byte  play_low_tone[] = {0x02,0x0a,int_to2byte(400,1),int_to2byte(400,0)};
+  byte  mute[] = {0x02,0x0a,0,0};
+  byte motion_readout_msg[] = {0x40,0x0a};
+    if(robot->ChechModuleSetup(3,module_Types)){
+        Module *motion_sensor = robot->getModule(0x1b);
+        Module *button = robot->getModule(0x18);
+        Module *buzzer = robot->getModule(0x16);
+        while(true){
+          robot->Transfere(button,button_pressed_msg);
+          Serial.println(robot->output_buffer[0]);
+          if(robot->output_buffer[0] ==0){
+            robot->Transfere(motion_sensor,motion_readout_msg);
+            int dx = (int)(robot->output_buffer[0]<<8) | robot->output_buffer[1];
+            int dy = (int)(robot->output_buffer[2]<<8) | robot->output_buffer[3];
+            Serial.print("X:");
+            Serial.print(dx);
+            Serial.print(" ");
+            Serial.print("Y:");
+            Serial.println(dy);              
+            if(dx > 0 || dy >0){
+              robot->Transfere(buzzer,play_low_tone);
+            }else{
+              robot->Transfere(buzzer,mute);
+            }
+          }
           if(Serial.available()){
             Serial.read();
             break;
@@ -125,7 +165,7 @@ void run_Milestone_Test(){
 }
 
 void gas_sensor_test(){
-  robot->IdentifyModules_SPI();
+  robot->IdentifyModules_I2C();
   byte gas_sensor_id = 28;
   if(robot->ChechModuleSetup(1,&gas_sensor_id)){
     Serial.println("Gas sensor detected!");

@@ -21,6 +21,7 @@
     #ifdef DEBUG_MODE
      
     #endif
+    Set_module_CS(0);
   }
 
 byte Skribot_2::CPLD_read(byte addr){
@@ -172,7 +173,7 @@ byte Skribot_2::TransferAndReciveByte_SPI(byte in,byte addr){
    return(out);
 }
 
-/*
+
 byte Skribot_2::SPITransfere(byte addr, byte *msg){
   for(byte p = 0; p < 15; p++)output_buffer[p] = 0;
   byte Nsend = msg[0] & B00001111;              //number of bytes to send
@@ -198,7 +199,7 @@ byte Skribot_2::SPITransfere(byte addr, byte *msg){
   for(byte pp = 0; pp < Nrec; pp++)output_buffer[pp] = output[pp];
   return(Nrec);
 }
-*/
+/*
 byte Skribot_2::SPITransfere(byte addr, byte *msg){
   for(byte p = 0; p < 15; p++)output_buffer[p] = 0;
   byte Nsend = msg[0] & B00001111;              //number of bytes to send
@@ -233,7 +234,7 @@ byte Skribot_2::SPITransfere(byte addr, byte *msg){
   Set_module_CS(0);
   return(Nrec);
 }
-
+*/
 void Skribot_2::Set_module_CS(byte CSn){
   if(CSn != 0){
     CPLD_write(1<<(CSn-1),CPLD_SET_CS);
