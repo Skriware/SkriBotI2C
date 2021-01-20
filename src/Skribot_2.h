@@ -28,7 +28,7 @@
 2 - Set Identifier;
 
 */
-static const int spiClk = 2000000; // 1 MHz
+static const int spiClk = 2000000; // 2 MHz
 
   class Skribot_2
  {
