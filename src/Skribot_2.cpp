@@ -151,13 +151,13 @@ if(Update_Module_Signals() != MODULE_ERROR_CODE){
          }else{
           Serial.println("All module slots occupied.");
          }
-         #ifdef DEBUG_MODE
+         //#ifdef DEBUG_MODE
          Serial.println("Find module!");
          Serial.print("Type:");
          Serial.println(tmp_type);
          Serial.println("address:");
          Serial.println(tmp_addr);
-         #endif
+         //#endif
       }
   }
   }
@@ -168,39 +168,17 @@ byte Skribot_2::TransferAndReciveByte_SPI(byte in,byte addr){
   hspi->beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0)); 
   Set_module_CS(addr); 
    byte out = hspi->transfer(in);
+   #ifdef DEBUG_MODE
+   Serial.print("Send:");
+   Serial.println(in);
+   #endif
    hspi->endTransaction();
   Set_module_CS(0);
    return(out);
 }
 
 
-byte Skribot_2::SPITransfere(byte addr, byte *msg){
-  for(byte p = 0; p < 15; p++)output_buffer[p] = 0;
-  byte Nsend = msg[0] & B00001111;              //number of bytes to send
-  byte Nrec  = (msg[0]>>4) & B00001111;         // nuber of bytes to recive
-  byte output[Nrec];
-  TransferAndReciveByte_SPI(msg[0],addr);           //transmit header
-  TransferAndReciveByte_SPI(msg[1],addr);           //transfering command address
-  for(byte yy = 1; yy < Nsend+1;yy++){
-  TransferAndReciveByte_SPI(msg[yy+1],addr);
-  }
-  byte checksum = 0;
-  for(byte jj = 0; jj < Nsend+2;jj++)checksum = checksum^msg[jj];
-  checksum+=4;
-  TransferAndReciveByte_SPI(checksum,addr);              //sending checksum
-  for(byte zz = 0; zz<Nrec;zz++){
-    output[zz] = TransferAndReciveByte_SPI(0,addr);             //receiving data 
-  }
-  byte tmp_checksum = TransferAndReciveByte_SPI(0,addr); 
-  byte rcv_checksum = 0;
-  for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
-    rcv_checksum+=4;
-  if(tmp_checksum != rcv_checksum)Serial.println("SPI checksum error!");
-  for(byte pp = 0; pp < Nrec; pp++)output_buffer[pp] = output[pp];
-  return(Nrec);
-}
-/*
-byte Skribot_2::SPITransfere(byte addr, byte *msg){
+/*byte Skribot_2::SPITransfere(byte addr, byte *msg){
   for(byte p = 0; p < 15; p++)output_buffer[p] = 0;
   byte Nsend = msg[0] & B00001111;              //number of bytes to send
   byte Nrec  = (msg[0]>>4) & B00001111;         // nuber of bytes to recive
@@ -209,8 +187,8 @@ byte Skribot_2::SPITransfere(byte addr, byte *msg){
   Set_module_CS(addr); 
   hspi->transfer(msg[0]);          //transmit header
   hspi->transfer(msg[1]);          //transfering command address
-  for(byte yy = 1; yy < Nsend+1;yy++){
-  hspi->transfer(msg[yy+1]);
+  for(byte yy = 2; yy < Nsend+2;yy++){
+  hspi->transfer(msg[yy]);
   }
   byte checksum = 0;
   for(byte jj = 0; jj < Nsend+2;jj++)checksum = checksum^msg[jj];
@@ -235,6 +213,7 @@ byte Skribot_2::SPITransfere(byte addr, byte *msg){
   return(Nrec);
 }
 */
+
 void Skribot_2::Set_module_CS(byte CSn){
   if(CSn != 0){
     CPLD_write(1<<(CSn-1),CPLD_SET_CS);
@@ -315,6 +294,10 @@ void Skribot_2::BLE_Setup(){
     void Skribot_2::I2CSend(byte in,byte addr){
           Wire.beginTransmission(addr);
           Wire.write(in);
+          #ifdef DEBUG_MODE
+          Serial.println("I2C send:");
+          Serial.println(in);
+          #endif
           Wire.endTransmission();
     }
     byte Skribot_2::I2CRecive(byte addr,byte size){
@@ -327,6 +310,9 @@ void Skribot_2::BLE_Setup(){
 
     }
     byte Skribot_2::I2CTransfere(byte addr, byte *msg){
+         #ifdef DEBUG_MODE 
+          Serial.println("I2C TRANSFERE");
+        #endif
            for(byte p = 0; p < 15; p++)output_buffer[p] = 0;
               byte Nsend = msg[0] & B00001111;              //number of bytes to send
               byte Nrec  = (msg[0]>>4) & B00001111;         // nuber of bytes to recive
@@ -337,6 +323,10 @@ void Skribot_2::BLE_Setup(){
               Wire.beginTransmission(addr);
               for(byte yy = 2; yy < Nsend+2;yy++){
                 Wire.write(msg[yy]);
+                #ifdef DEBUG_MODE
+                Serial.print("I2C Send:");
+                Serial.println(msg[yy]);
+                #endif
               }
               Wire.endTransmission();
               }
@@ -350,18 +340,57 @@ void Skribot_2::BLE_Setup(){
                       output[tt] = Wire.read();
                       tt++;
                        if(tt == Nrec+1)break;
-                    }
-                            
-                            
+                    }               
               byte tmp_checksum = output[Nrec];
               byte rcv_checksum = 0;
-              
               for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
               rcv_checksum+=4;
-              if(tmp_checksum != rcv_checksum)Serial.println("I2C checksum error!");
-              for(byte pp = 0; pp < Nrec; pp++)output_buffer[pp] = output[pp];
+              if(tmp_checksum != rcv_checksum && msg[1] != 0)Serial.println("I2C checksum error!");
+              for(byte pp = 0; pp < Nrec+1; pp++){
+                 output_buffer[pp] = output[pp];
+                #ifdef DEBUG_MODE
+                Serial.print("Got:");
+                Serial.println(output_buffer[pp]);
+                #endif
+              }
               return(Nrec);
     }
+
+    byte Skribot_2::SPITransfere(byte addr, byte *msg){
+              #ifdef DEBUG_MODE
+                Serial.println("SPI TRANSFERE");
+                #endif
+         
+              for(byte p = 0; p < 15; p++)output_buffer[p] = 0;
+              byte Nsend = msg[0] & B00001111;              //number of bytes to send
+              byte Nrec  = (msg[0]>>4) & B00001111;         // nuber of bytes to recive
+              byte output[Nrec];
+              TransferAndReciveByte_SPI(msg[0],addr);           //transmit header
+              TransferAndReciveByte_SPI(msg[1],addr);           //transfering command address
+              for(byte yy = 2; yy < Nsend+2;yy++){
+              TransferAndReciveByte_SPI(msg[yy],addr);
+              }
+              byte checksum = 0;
+              for(byte jj = 0; jj < Nsend+2;jj++)checksum = checksum^msg[jj];
+              checksum+=4;
+              TransferAndReciveByte_SPI(checksum,addr);              //sending checksum
+              for(byte zz = 0; zz<Nrec;zz++){
+                output[zz] = TransferAndReciveByte_SPI(0,addr);             //receiving data 
+              }
+              byte tmp_checksum = TransferAndReciveByte_SPI(0,addr); 
+              byte rcv_checksum = 0;
+              for(byte rr  = 0; rr <Nrec;rr++)rcv_checksum = rcv_checksum^output[rr];
+                rcv_checksum+=4;
+              if(tmp_checksum != rcv_checksum && msg[1] != 0x00)Serial.println("SPI checksum error!");
+              for(byte pp = 0; pp < Nrec+1; pp++){
+                output_buffer[pp] = output[pp];
+                #ifdef DEBUG_MODE
+                Serial.print("Got:");
+                Serial.println(output_buffer[pp]);
+                #endif
+              }
+              return(Nrec);
+}
 
     void Skribot_2::IdentifyModules_I2C(){
      for(byte ii = 0; ii < connected_modules;ii++)delete modules[ii];

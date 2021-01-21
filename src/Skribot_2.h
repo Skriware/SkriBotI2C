@@ -1,6 +1,6 @@
 #ifndef SkriBotI2C_H
 #define SkriBotI2C_H
-#define DEBUG_MODE
+//#define DEBUG_MODE
 #include "Arduino.h"
 #include <utilities/Module.h>
 #include <utilities/BLEModule.h>

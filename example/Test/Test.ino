@@ -25,7 +25,7 @@ void loop() {
     if(input == 'B'){
      robot->IdentifyModules_SPI(); 
     }else if(input == 'C'){
-            Serial.println("I2C Scan");
+      Serial.println("I2C Scan");
     robot->IdentifyModules_I2C();
     }else if(input == 'T'){
       run_Test_Program();
@@ -57,32 +57,39 @@ byte val_to_bar(int val,int max){
 
 void run_Milestone_Test_3_1(){
   byte module_Types[] = {0x19,0x20};
-  //robot->IdentifyModules_SPI();
   byte  recive_msg_IR[] = {0x10,0x0b};
-  byte  set_servo_position[] = {0x01,0x0a,100};
+  byte  set_servo_position[] = {0x01,0x0a,90};
     if(robot->ChechModuleSetup(2,module_Types)){
       Serial.println("Running v 3_1");
         long _time = millis();
+        long start_time = millis();
         Module *servo = robot->getModule(0x20);
         Module *ir_rx = robot->getModule(0x19);
+        byte tmp_pos;
+        robot->Transfere(servo,set_servo_position);
         while(true){
           robot->Transfere(ir_rx,recive_msg_IR);
-          Serial.println(robot->output_buffer[0]);
           if(robot->output_buffer[0] == 2){
             set_servo_position[2] = 45;
+            tmp_pos = 45;
           }else if(robot->output_buffer[0] == 3){
             set_servo_position[2] = 90;
+            tmp_pos = 90;
           }
+          Serial.println(robot->output_buffer[0]);
+          delay(200);
           robot->Transfere(servo,set_servo_position);
-          delay(100);
           if(Serial.available()){
             Serial.read();
-            
             break;
           }
-          if((millis()-_time)%12000){
+          if((millis()-_time) > 300000){
             Serial.println("Working for:");
-            Serial.println(millis()-_time);
+            Serial.println(millis()-start_time);
+            _time = millis();
+            Serial.print("Servo position:");
+            Serial.println(tmp_pos);
+
           }
         }
     }
@@ -90,34 +97,48 @@ void run_Milestone_Test_3_1(){
 
 void run_Milestone_Test_3_2(){
   byte module_Types[] = {0x19,0x11};
-  //robot->IdentifyModules_I2C();
   byte  transmit_msg[] = {0x01,0x0a,2};
   byte  read_QTR[] = {0x21,0x0b,0};
+  byte  reset[] = {0x00,0x00};
     if(robot->ChechModuleSetup(2,module_Types)){
         Serial.println("Running v 3_2");
         long _time = millis();
+        long start_time = millis();
         Module *qtr = robot->getModule(0x11);
         Module *ir_tx = robot->getModule(0x19);
+        byte tmp_msg;
+        int raw_r;
         while(true){
-          robot->Transfere(qtr,read_QTR);
-          int raw_r = int(robot->output_buffer[0]<<8) | robot->output_buffer[1];
-          Serial.println(raw_r);
-          if(raw_r < 1500){
-            transmit_msg[2] = 2;
+          if(millis()-_time > 300000){
+            Serial.println("Working for:");
+            Serial.println(millis()-start_time);
+            _time = millis();
+            robot->Transfere(qtr,read_QTR);
+            raw_r = int(robot->output_buffer[0]<<8) | robot->output_buffer[1];
+            if(raw_r > 2000){
+                transmit_msg[2] = 2;
+                tmp_msg = 1;
+              }else{
+                transmit_msg[2] = 3;
+                tmp_msg = 2;
+              }
+            Serial.print("Servo pos:");
+            Serial.print(transmit_msg[2]);
+            Serial.print("qtr readout:");
+            Serial.println(raw_r);
             robot->Transfere(ir_tx,transmit_msg);
-            delay(300);
-          }else{
-            transmit_msg[2] = 3;
-            robot->Transfere(ir_tx,transmit_msg); 
-            delay(300);
-          }
+            delay(100);
+            robot->Transfere(ir_tx,reset);
+            delay(100);
+            robot->Transfere(ir_tx,transmit_msg);
+            delay(100);
+            robot->Transfere(ir_tx,reset);
+            delay(100);
+
           if(Serial.available()){
             Serial.read();
             break;
           }
-          if((millis()-_time)%12000){
-            Serial.println("Working for:");
-            Serial.println(millis()-_time);
           }
         }
     }
@@ -195,8 +216,8 @@ void run_Milestone_Test_2(){
   //robot->IdentifyModules_I2C();
   byte button_pressed_msg[] = {0x11,0x0d,0};
   byte button_1_pressed_msg[] = {0x11,0x0d,1};
-  byte  play_high_tone[] = {0x02,0x0a,int_to2byte(600,1),int_to2byte(600,0)};
-  byte  play_low_tone[] = {0x02,0x0a,int_to2byte(400,1),int_to2byte(400,0)};
+  byte  play_high_tone[] = {0x02,0x0a,1,0xb8};
+  byte  play_low_tone[] = {0x02,0x0a,4,0xb8};
   byte  mute[] = {0x02,0x0a,0,0};
   byte motion_readout_msg[] = {0x40,0x0a};
     if(robot->ChechModuleSetup(3,module_Types)){
@@ -221,32 +242,24 @@ void run_Milestone_Test_2(){
             robot->Transfere(motion_sensor,motion_readout_msg);
             dx = (int)(robot->output_buffer[0]<<8) | robot->output_buffer[1];
             dy = (int)(robot->output_buffer[2]<<8) | robot->output_buffer[3];        
-            if(dx > 1000 || dy >1000){
-              for(byte rr =0;rr<10;rr++){
-              robot->Transfere(buzzer,play_low_tone);
+              if(dx > 2000 || dy > 2000){
               if(tmp_button_1 == 0){
-                delay(10);
+                 robot->Transfere(buzzer,play_low_tone);
               }else{
-                delay(30);
-              }
-              robot->Transfere(buzzer,play_high_tone);
-              if(tmp_button_1 == 0){
-                delay(10);
-              }else{
-                delay(30);
-              }
+                 robot->Transfere(buzzer,play_high_tone);
               }
             }else{
-              robot->Transfere(buzzer,mute);
+            robot->Transfere(buzzer,mute);
             }
-          }
-          robot->Transfere(buzzer,mute);
+            }else{
+            robot->Transfere(buzzer,mute);
+            }
           if(Serial.available()){
             Serial.read();
             robot->Transfere(buzzer,mute);
             break;
           }
-          if((millis()-_time) >600000){
+          if((millis()-_time) >60000){
             Serial.println("Working for:");
             Serial.println(millis()-start_time);
             _time = millis();
@@ -342,8 +355,8 @@ void run_Test_Program(){
         }
   }else if(robot->ChechModuleSetup(1,&buzzer_id)){
     Module *buzzer = robot->getModule(0x16);
-    byte  play_high_tone[] = {0x02,0x0a,int_to2byte(800,1),int_to2byte(800,0)};
-    byte  play_low_tone[] = {0x02,0x0a,int_to2byte(400,1),int_to2byte(400,0)};
+    byte  play_high_tone[] = {0x02,0x0a,1,0xb8};
+    byte  play_low_tone[] = {0x02,0x0a,1,0xb8};
     byte  mute[] = {0x02,0x0a,0,0};
     while(true){
             robot->Transfere(buzzer,play_high_tone);
